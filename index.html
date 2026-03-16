@@ -27,6 +27,8 @@ border-radius:8px 8px 0 0;
 box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
+.toolbar button:last-child{ background:#4CAF50; color:white; font-weight:bold; }
+
 .toolbar button{
 padding:10px 14px;
 margin-right:6px;
@@ -75,7 +77,7 @@ padding:10px 20px;
 margin-top:10px;
 }
 
-ol {
+ol{
 list-style:none;
 counter-reset:item;
 padding-left:30px;
@@ -90,10 +92,19 @@ content:counter(item)") ";
 font-weight:bold;
 }
 
-.toolbar button:last-child{
-background:#4CAF50;
-color:white;
-font-weight:bold;
+.header{
+display:flex;
+justify-content:flex-end;
+}
+
+.logoutBtn{
+padding:10px 14px;
+border:none;
+background:red;
+border-radius:8px;
+cursor:pointer;
+font-size:16px;
+margin-right:10px;
 }
 
 @media (max-width:600px){
@@ -122,7 +133,7 @@ margin-bottom:5px;
 
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- LOGIN -->
 
 <div id="login" class="login">
 
@@ -154,40 +165,37 @@ margin-bottom:5px;
 
 <button onclick="format('undo')">Undo</button>
 <button onclick="format('redo')">Redo</button>
-&nbsp;&nbsp;&nbsp;
-<button onclick="confirmSave()" title="Save">💾</button>
 
-
+<button onclick="confirmSave()">💾 Save</button>
 
 </div>
 
 <div class="statusbar">
 Words: <span id="words">0</span> |
-Characters: <span id="chars">0</span>
+Characters: <span id="chars">0</span> |
+<span id="saveStatus">Saved ✓</span>
 </div>
 
 <div id="editor" contenteditable="true"></div>
 
-<button onclick="logout()">Logout</button>
-
+<div class="header">
+<button onclick="logout()" class="logoutBtn">Logout</button>
 </div>
 
 </div>
 
-<!-- FIREBASE -->
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-
-apiKey: "AIzaSyCEEoqhCtsARgWu3VllkBwJzKbi-0uHUbk",
-authDomain: "writer-notepad-34692.firebaseapp.com",
-projectId: "writer-notepad-34692"
-
+apiKey:"AIzaSyCEEoqhCtsARgWu3VllkBwJzKbi-0uHUbk",
+authDomain:"writer-notepad-34692.firebaseapp.com",
+projectId:"writer-notepad-34692"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -196,20 +204,25 @@ const db = getFirestore(app);
 
 const editor = document.getElementById("editor")
 
-window.format = function(cmd){
+let unsavedChanges=false
+
+window.format=function(cmd){
 document.execCommand(cmd,false,null)
 }
 
 function updateStats(){
 
-let text = editor.innerText.trim()
+let text=editor.innerText.trim()
 
-let words = text.split(/\s+/).filter(w=>w.length>0)
+let words=text.split(/\s+/).filter(w=>w.length>0)
 
-document.getElementById("words").innerText = words.length
-document.getElementById("chars").innerText = text.length
+document.getElementById("words").innerText=words.length
+document.getElementById("chars").innerText=text.length
 
 localStorage.setItem("backup",editor.innerHTML)
+
+unsavedChanges=true
+document.getElementById("saveStatus").innerText="Unsaved Changes ⚠"
 
 }
 
@@ -219,56 +232,62 @@ async function saveCloud(){
 
 if(!auth.currentUser) return
 
-let content = editor.innerHTML.trim()
+let content=editor.innerHTML.trim()
 
-if(content === "") return
+if(content==="") return
+
+document.getElementById("saveStatus").innerText="Saving..."
 
 await setDoc(doc(db,"documents",auth.currentUser.uid),{
-content: content
+content:content
 })
+
+unsavedChanges=false
+
+document.getElementById("saveStatus").innerText="Saved ✓"
+
 }
 
-window.confirmSave = async function(){
+window.confirmSave=async function(){
 
 if(!auth.currentUser){
 alert("You must be logged in.")
 return
 }
 
-let confirmSave = confirm("Save this document to the cloud?")
+let confirmSave=confirm("Save this document to the cloud?")
 
 if(confirmSave){
 await saveCloud()
-alert("Document saved successfully.")
 }
 
 }
 
 async function loadCloud(){
 
-const ref = doc(db,"documents",auth.currentUser.uid)
+const ref=doc(db,"documents",auth.currentUser.uid)
 
-const snap = await getDoc(ref)
+const snap=await getDoc(ref)
 
 if(snap.exists()){
 
-editor.innerHTML = snap.data().content
+editor.innerHTML=snap.data().content
 
 }else{
 
-let backup = localStorage.getItem("backup")
+let backup=localStorage.getItem("backup")
 
-if(backup) editor.innerHTML = backup
+if(backup) editor.innerHTML=backup
 
 }
 
 updateStats()
+unsavedChanges=false
+document.getElementById("saveStatus").innerText="Saved ✓"
 
 }
 
-//setInterval(saveCloud,5000)
-
-window.login = async function(){
+window.login=async function(){
 
 let email=document.getElementById("email").value
 let pass=document.getElementById("password").value
@@ -277,12 +296,23 @@ await signInWithEmailAndPassword(auth,email,pass)
 
 }
 
-window.logout = function(){
+window.logout = async function(){
 
-signOut(auth)
+if(unsavedChanges){
+
+let choice = confirm("You have unsaved changes.\n\nOK = Save and Logout\nCancel = Logout without saving")
+
+if(choice){
+await saveCloud()
+}
 
 }
 
+signOut(auth)
+editor.innerHTML = ""
+
+
+}
 onAuthStateChanged(auth,user=>{
 
 if(user){
@@ -298,6 +328,15 @@ document.getElementById("login").style.display="block"
 document.getElementById("app").style.display="none"
 
 }
+
+})
+
+window.addEventListener("beforeunload",function(e){
+
+if(!unsavedChanges) return
+
+e.preventDefault()
+e.returnValue=""
 
 })
 
