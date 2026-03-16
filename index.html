@@ -27,7 +27,7 @@ border-radius:8px 8px 0 0;
 box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-.toolbar button:last-child{ background:#4CAF50; color:white; font-weight:bold; }
+.toolbar .saveButton{ background:#4CAF50; color:white; font-weight:bold; }
 
 .toolbar button{
 padding:10px 14px;
@@ -105,6 +105,8 @@ border-radius:8px;
 cursor:pointer;
 font-size:16px;
 margin-right:10px;
+color:white; 
+font-weight:bold;
 }
 
 @media (max-width:600px){
@@ -114,7 +116,6 @@ width:95%;
 }
 
 .toolbar{
-display:flex;
 flex-wrap:wrap;
 position:sticky;
 top:0;
@@ -166,15 +167,17 @@ margin-bottom:5px;
 <button onclick="format('undo')">Undo</button>
 <button onclick="format('redo')">Redo</button>
 
-<button onclick="confirmSave()">💾 Save</button>
-
-</div>
+<button onclick="confirmSave()" class="saveButton">💾 Save</button>
 
 <div class="statusbar">
 Words: <span id="words">0</span> |
 Characters: <span id="chars">0</span> |
 <span id="saveStatus">Saved ✓</span>
 </div>
+
+</div>
+
+
 
 <div id="editor" contenteditable="true"></div>
 
@@ -227,6 +230,37 @@ document.getElementById("saveStatus").innerText="Unsaved Changes ⚠"
 }
 
 editor.addEventListener("input",updateStats)
+
+
+document.addEventListener("keydown", function(e){
+
+if(!editor.contains(document.activeElement)) return
+
+if(e.ctrlKey){
+
+switch(e.key.toLowerCase()){
+
+case "b":
+e.preventDefault()
+format("bold")
+break
+
+case "i":
+e.preventDefault()
+format("italic")
+break
+
+case "u":
+e.preventDefault()
+format("underline")
+break
+
+}
+
+}
+
+})
+
 
 async function saveCloud(){
 
