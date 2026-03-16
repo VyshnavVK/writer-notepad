@@ -3,7 +3,7 @@
 <head>
 <title>Writer Notepad</title>
 <link rel="manifest" href="manifest.json">
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 
 body{
@@ -14,8 +14,9 @@ body{
 
 .container{
     width:85%;
+    max-width:900px;
     margin:auto;
-    margin-top:25px;
+    margin-top:20px;
 }
 
 .toolbar{
@@ -26,13 +27,13 @@ body{
 }
 
 .toolbar button{
-    padding:8px 12px;
-    margin-right:4px;
+    padding:10px 14px;
+    margin-right:6px;
     border:none;
     background:#eef1f5;
-    border-radius:6px;
+    border-radius:8px;
     cursor:pointer;
-    font-size:15px;
+    font-size:16px;
 }
 
 .toolbar button:hover{
@@ -72,6 +73,34 @@ ol li::before {
     font-weight: bold;
 }
 
+@media (max-width: 600px){
+
+.container{
+    width:95%;
+}
+
+#editor{
+    min-height:70vh;
+    font-size:16px;
+    padding:18px;
+}
+
+.toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.toolbar button{
+    flex:1;
+    min-width:60px;
+    margin-bottom:5px;
+}
+
+}
+
 </style>
 </head>
 
@@ -93,7 +122,7 @@ ol li::before {
 
 </div>
 
-<div id="editor" contenteditable="true"></div>
+<div id="editor" contenteditable="true" spellcheck="true"></div>
 
 <div class="statusbar">
 Words: <span id="words">0</span> |
@@ -147,6 +176,3 @@ if ("serviceWorker" in navigator) {
 </body>
 </html>
 
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js")
-}
