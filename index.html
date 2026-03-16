@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Writer Notepad</title>
+<link rel="manifest" href="manifest.json">
+
+<style>
+
+body{
+    margin:0;
+    font-family: system-ui;
+    background:#f4f6f8;
+}
+
+.container{
+    width:85%;
+    margin:auto;
+    margin-top:25px;
+}
+
+.toolbar{
+    background:white;
+    padding:10px;
+    border-radius:8px 8px 0 0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.toolbar button{
+    padding:8px 12px;
+    margin-right:4px;
+    border:none;
+    background:#eef1f5;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:15px;
+}
+
+.toolbar button:hover{
+    background:#dce1e8;
+}
+
+#editor{
+    background:white;
+    min-height:75vh;
+    padding:25px;
+    font-size:18px;
+    line-height:1.6;
+    border-radius:0 0 8px 8px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    outline:none;
+}
+
+.statusbar{
+    margin-top:10px;
+    font-size:14px;
+    color:#555;
+}
+
+ol {
+    list-style: none;
+    counter-reset: item;
+    padding-left: 30px;
+}
+
+ol li {
+    counter-increment: item;
+    margin-bottom: 4px;
+}
+
+ol li::before {
+    content: counter(item) ") ";
+    font-weight: bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="toolbar">
+
+<button onclick="format('bold')"><b>B</b></button>
+<button onclick="format('italic')"><i>I</i></button>
+<button onclick="format('underline')"><u>U</u></button>
+
+<button onclick="format('insertUnorderedList')">• List</button>
+<button onclick="format('insertOrderedList')">1) List</button>
+
+<button onclick="format('undo')">Undo</button>
+<button onclick="format('redo')">Redo</button>
+
+</div>
+
+<div id="editor" contenteditable="true"></div>
+
+<div class="statusbar">
+Words: <span id="words">0</span> |
+Characters: <span id="chars">0</span> |
+Auto-saved locally
+</div>
+
+</div>
+
+<script>
+
+const editor = document.getElementById("editor")
+
+function format(cmd){
+    document.execCommand(cmd,false,null)
+}
+
+function updateStats(){
+
+    let text = editor.innerText.trim()
+
+    let words = text.split(/\s+/).filter(w => w.length>0)
+
+    document.getElementById("words").innerText = words.length
+    document.getElementById("chars").innerText = text.length
+
+    localStorage.setItem("writerContent",editor.innerHTML)
+
+}
+
+editor.addEventListener("input",updateStats)
+
+window.onload = function(){
+
+    let saved = localStorage.getItem("writerContent")
+
+    if(saved){
+        editor.innerHTML = saved
+    }
+
+    updateStats()
+}
+
+</script>
+
+</body>
+</html>

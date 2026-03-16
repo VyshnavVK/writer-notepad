@@ -1,0 +1,20 @@
+{
+  "name": "Writer Notepad",
+  "short_name": "Writer",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#f4f6f8",
+  "icons": [
+    {
+      "src": "Windows_Notepad_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "Windows_Notepad_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
