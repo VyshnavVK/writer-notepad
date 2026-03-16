@@ -240,28 +240,29 @@ document.addEventListener("keydown", function(e){
 
 if(!editor.contains(document.activeElement)) return
 
-if(e.ctrlKey){
+if (e.ctrlKey || e.metaKey) { // metaKey adds support for Cmd on Mac
+    switch (e.key.toLowerCase()) {
+      case "b":
+        e.preventDefault();
+        format("bold");
+        break;
 
-switch(e.key.toLowerCase()){
+      case "i":
+        e.preventDefault();
+        format("italic");
+        break;
 
-case "b":
-e.preventDefault()
-format("bold")
-break
+      case "u":
+        e.preventDefault();
+        format("underline");
+        break;
 
-case "i":
-e.preventDefault()
-format("italic")
-break
-
-case "u":
-e.preventDefault()
-format("underline")
-break
-
-}
-
-}
+      case "s": 
+        e.preventDefault(); // This stops the browser's Save Page dialog
+        saveCloud();
+        break;
+    }
+  }
 
 })
 
