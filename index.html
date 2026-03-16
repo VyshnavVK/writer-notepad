@@ -2,7 +2,6 @@
 <html>
 <head>
 <title>Writer Notepad</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -31,8 +30,6 @@ border-radius:8px 8px 0 0;
 box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-.toolbar .saveButton{ background:#4CAF50; color:white; font-weight:bold; }
-
 .toolbar button{
 padding:10px 14px;
 margin-right:6px;
@@ -41,6 +38,12 @@ background:#eef1f5;
 border-radius:8px;
 cursor:pointer;
 font-size:16px;
+}
+
+.toolbar .saveButton{
+background:#4CAF50;
+color:white;
+font-weight:bold;
 }
 
 #editor{
@@ -57,7 +60,7 @@ outline:none;
 .statusbar{
 margin:10px;
 font-size:14px;
-color:#ffffff;
+color:white;
 }
 
 .login{
@@ -81,26 +84,6 @@ padding:10px 20px;
 margin-top:10px;
 }
 
-ol{
-list-style:none;
-counter-reset:item;
-padding-left:30px;
-}
-
-ol li{
-counter-increment:item;
-}
-
-ol li::before{
-content:counter(item)") ";
-font-weight:bold;
-}
-
-.header{
-display:flex;
-justify-content:flex-end;
-}
-
 .logoutBtn{
 padding:10px 14px;
 border:none;
@@ -109,28 +92,77 @@ border-radius:8px;
 cursor:pointer;
 font-size:16px;
 margin-right:10px;
-color:white; 
+color:white;
 font-weight:bold;
 }
 
-@media (max-width:600px){
-
-.container{
-width:95%;
+.header{
+display:flex;
+justify-content:flex-end;
 }
 
-.toolbar{
-flex-wrap:wrap;
-position:sticky;
+/* Hamburger */
+
+.hamburger{
+position:fixed;
+top:15px;
+right:15px;
+font-size:24px;
+background:rgb(108,85,207);
+color:white;
+border:none;
+padding:8px 12px;
+border-radius:6px;
+cursor:pointer;
+z-index:1001;
+}
+
+.sideMenu{
+position:fixed;
 top:0;
+left:-280px;
+width:260px;
+height:100%;
+background:white;
+padding:20px;
+box-shadow:2px 0 10px rgba(0,0,0,0.2);
+transition:0.3s;
+z-index:1000;
 }
 
-.toolbar button{
-flex:1;
-min-width:60px;
-margin-bottom:5px;
+.sideMenu.open{
+left:0;
 }
 
+.sideMenu select,
+.sideMenu button{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+}
+
+.chapterHeader{
+ display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.5); 
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: white;
+}
+
+.chapterHeader span{
+  flex:1;
+  font-weight:bold;
+  font-size: 50px;
+}
+
+.chapterHeader button{
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:16px;
+  margin-left:10px;
 }
 
 </style>
@@ -138,24 +170,29 @@ margin-bottom:5px;
 
 <body>
 
-<!-- LOGIN -->
-
 <div id="login" class="login">
-
 <h3>Login</h3>
-
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
-
 <br>
-
 <button onclick="login()">Login</button>
-
 </div>
 
-<!-- EDITOR -->
-
 <div id="app" style="display:none">
+
+<button class="hamburger" onclick="toggleMenu()">☰</button>
+
+<div id="sideMenu" class="sideMenu">
+
+<h3>Projects</h3>
+
+<select id="novelList" onchange="loadChapters()"></select>
+<select id="chapterList" onchange="loadChapter()"></select>
+
+<button onclick="newNovel()">New Novel</button>
+<button onclick="newChapter()">New Chapter</button>
+
+</div>
 
 <div class="container">
 
@@ -181,7 +218,10 @@ Characters: <span id="chars">0</span> |
 
 </div>
 
-
+<div class="chapterHeader">
+  <span id="chapterTitleDisplay">Chapter: -</span>
+  <button id="editChapterBtn" title="Edit Chapter Name">✏️</button>
+</div>
 
 <div id="editor" contenteditable="true"></div>
 
@@ -190,194 +230,320 @@ Characters: <span id="chars">0</span> |
 </div>
 
 </div>
-
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
+const firebaseConfig={
 apiKey:"AIzaSyCEEoqhCtsARgWu3VllkBwJzKbi-0uHUbk",
 authDomain:"writer-notepad-34692.firebaseapp.com",
 projectId:"writer-notepad-34692"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
 
-const editor = document.getElementById("editor")
-
-let unsavedChanges=false
+const editor=document.getElementById("editor");
+let unsavedChanges=false;
 
 window.format=function(cmd){
-document.execCommand(cmd,false,null)
+document.execCommand(cmd,false,null);
 }
 
 function updateStats(){
 
-let text=editor.innerText.trim()
+let text=editor.innerText.trim();
+let words=text.split(/\s+/).filter(w=>w.length>0);
 
-let words=text.split(/\s+/).filter(w=>w.length>0)
+document.getElementById("words").innerText=words.length;
+document.getElementById("chars").innerText=text.length;
 
-document.getElementById("words").innerText=words.length
-document.getElementById("chars").innerText=text.length
+localStorage.setItem("backup",editor.innerHTML);
 
-localStorage.setItem("backup",editor.innerHTML)
-
-unsavedChanges=true
-document.getElementById("saveStatus").innerText="Unsaved Changes ⚠"
+unsavedChanges=true;
+document.getElementById("saveStatus").innerText="Unsaved Changes ⚠";
 
 }
 
-editor.addEventListener("input",updateStats)
+editor.addEventListener("input",updateStats);
+
+/* Keyboard shortcuts */
+
+document.addEventListener("keydown",function(e){
+
+if(!editor.contains(document.activeElement)) return;
+
+if(e.ctrlKey||e.metaKey){
+
+switch(e.key.toLowerCase()){
+
+case "b":
+e.preventDefault();
+format("bold");
+break;
+
+case "i":
+e.preventDefault();
+format("italic");
+break;
+
+case "u":
+e.preventDefault();
+format("underline");
+break;
+
+case "s":
+e.preventDefault();
+saveCloud();
+break;
+
+}
+
+}
+
+});
+
+/* NOVELS */
+
+window.newNovel=async function(){
+
+let name=prompt("Novel name");
+if(!name) return;
+
+const ref=collection(db,"users",auth.currentUser.uid,"novels");
+
+await addDoc(ref,{name:name});
+
+loadNovels();
+
+}
+
+async function loadNovels(){
+
+const ref=collection(db,"users",auth.currentUser.uid,"novels");
+const snap=await getDocs(ref);
+
+const select=document.getElementById("novelList");
+select.innerHTML="";
+
+snap.forEach(docu=>{
+let opt=document.createElement("option");
+opt.value=docu.id;
+opt.textContent=docu.data().name;
+select.appendChild(opt);
+});
+
+if(select.options.length>0){
+loadChapters();
+}
+
+}
+
+/* CHAPTERS */
+
+window.newChapter=async function(){
+  let title = prompt("Chapter title");
+  if(!title) return;
+
+  let novelId = document.getElementById("novelList").value;
+
+  // count existing chapters to assign number
+  const ref = collection(db,"users",auth.currentUser.uid,"novels",novelId,"chapters");
+  const snap = await getDocs(ref);
+  const chapterNumber = snap.size + 1;
+
+   const newDocRef =  await addDoc(ref,{
+      title: title,
+      number: chapterNumber,   
+      content: ""
+  });
+
+  loadChapters(newDocRef.id);
+}
 
 
-document.addEventListener("keydown", function(e){
+window.loadChapters = async function(selectedChapterId = null) {
+  let novelId = document.getElementById("novelList").value;
+  if(!novelId) return;
 
-if(!editor.contains(document.activeElement)) return
+  const ref = collection(db,"users",auth.currentUser.uid,"novels",novelId,"chapters");
+  const snap = await getDocs(ref);
 
-if (e.ctrlKey || e.metaKey) { // metaKey adds support for Cmd on Mac
-    switch (e.key.toLowerCase()) {
-      case "b":
-        e.preventDefault();
-        format("bold");
-        break;
+  const select = document.getElementById("chapterList");
+  select.innerHTML="";
 
-      case "i":
-        e.preventDefault();
-        format("italic");
-        break;
+  // Build array of chapters
+  let chaptersArray = [];
+  snap.forEach(docu => {
+      chaptersArray.push({
+          id: docu.id,
+          title: docu.data().title,
+          number: docu.data().number || 0
+      });
+  });
 
-      case "u":
-        e.preventDefault();
-        format("underline");
-        break;
+  // Sort by chapter number ascending
+  chaptersArray.sort((a,b) => a.number - b.number);
 
-      case "s": 
-        e.preventDefault(); // This stops the browser's Save Page dialog
-        saveCloud();
-        break;
-    }
+  // Save globally
+  window.chaptersArray = chaptersArray;
+
+  // Populate dropdown with number + title
+  chaptersArray.forEach(chap => {
+      let opt = document.createElement("option");
+      opt.value = chap.id;
+      opt.textContent = `${chap.number}) ${chap.title}`;  // <-- this line adds numbering
+      select.appendChild(opt);
+  });
+
+  // Select proper chapter
+  if(select.options.length > 0){
+      if(selectedChapterId){
+          select.value = selectedChapterId;
+      } else {
+          select.selectedIndex = 0;
+      }
+      loadChapter(); // this will handle showing number in header if needed
+  }
+}
+
+
+
+window.loadChapter = async function(){
+
+  let novelId = document.getElementById("novelList").value;
+  let chapId = document.getElementById("chapterList").value;
+
+  if(!novelId || !chapId) return;
+
+  const ref = doc(db,"users",auth.currentUser.uid,"novels",novelId,"chapters",chapId);
+  const snap = await getDoc(ref);
+
+  if(snap.exists()){
+    editor.innerHTML = snap.data().content;
+
+    // Get chapter number from global array
+    let index = window.chaptersArray.findIndex(c => c.id === chapId);
+    document.getElementById("chapterTitleDisplay").textContent = snap.data().title;
   }
 
-})
+  updateStats();
+  document.getElementById("sideMenu").classList.remove("open");
 
+}
+
+document.getElementById("editChapterBtn").addEventListener("click", async function(){
+
+  let novelId = document.getElementById("novelList").value;
+  let chapId = document.getElementById("chapterList").value;
+
+  if(!novelId || !chapId){
+    alert("Select a chapter first");
+    return;
+  }
+
+  // Extract only the chapter name from header
+  const currentHeader = document.getElementById("chapterTitleDisplay").textContent;
+  const currentTitle = currentHeader.split(' - ').slice(1).join(' - ').trim() || '';
+
+  let newTitle = prompt("Enter new chapter name", currentTitle);
+
+  if(!newTitle || newTitle.trim() === "") return;
+
+  newTitle = newTitle.trim();
+
+  const ref = doc(db,"users",auth.currentUser.uid,"novels",novelId,"chapters",chapId);
+
+  await setDoc(ref, {title: newTitle}, {merge:true});
+
+  // Reload chapters and keep selection
+  loadChapters(chapId);
+});
+
+/* SAVE */
 
 async function saveCloud(){
 
-if(!auth.currentUser) return
+let novelId=document.getElementById("novelList").value
+let chapId=document.getElementById("chapterList").value
 
-let content=editor.innerHTML.trim()
+if(!novelId || !chapId){
+alert("Select a chapter first")
+return
+}
 
-if(content==="") return
+let content=editor.innerHTML
 
-document.getElementById("saveStatus").innerText="Saving..."
+const ref=doc(db,"users",auth.currentUser.uid,"novels",novelId,"chapters",chapId)
 
-await setDoc(doc(db,"documents",auth.currentUser.uid),{
-content:content
-})
+await setDoc(ref,{content:content},{merge:true})
 
 unsavedChanges=false
-
 document.getElementById("saveStatus").innerText="Saved ✓"
 
 }
 
 window.confirmSave=async function(){
 
-if(!auth.currentUser){
-alert("You must be logged in.")
-return
-}
-
-let confirmSave=confirm("Save this document to the cloud?")
-
-if(confirmSave){
-await saveCloud()
-}
+let confirmSave=confirm("Save this chapter?");
+if(confirmSave) await saveCloud();
 
 }
 
-async function loadCloud(){
-
-const ref=doc(db,"documents",auth.currentUser.uid)
-
-const snap=await getDoc(ref)
-
-if(snap.exists()){
-
-editor.innerHTML=snap.data().content
-
-}else{
-
-let backup=localStorage.getItem("backup")
-
-if(backup) editor.innerHTML=backup
-
-}
-
-updateStats()
-unsavedChanges=false
-document.getElementById("saveStatus").innerText="Saved ✓"
-
-}
+/* AUTH */
 
 window.login=async function(){
 
-let email=document.getElementById("email").value
-let pass=document.getElementById("password").value
+let email=document.getElementById("email").value;
+let pass=document.getElementById("password").value;
 
-await signInWithEmailAndPassword(auth,email,pass)
+await signInWithEmailAndPassword(auth,email,pass);
 
 }
 
-window.logout = async function(){
+window.logout=async function(){
 
 if(unsavedChanges){
-
-let choice = confirm("You have unsaved changes.\n\nOK = Save and Logout\nCancel = Logout without saving")
-
-if(choice){
-await saveCloud()
+let choice=confirm("Save before logout?");
+if(choice) await saveCloud();
 }
 
-}
-
-signOut(auth)
-editor.innerHTML = ""
-
+signOut(auth);
+editor.innerHTML="";
 
 }
+
 onAuthStateChanged(auth,user=>{
 
 if(user){
 
-document.getElementById("login").style.display="none"
-document.getElementById("app").style.display="block"
+document.getElementById("login").style.display="none";
+document.getElementById("app").style.display="block";
 
-loadCloud()
+loadNovels();
 
 }else{
 
-document.getElementById("login").style.display="block"
-document.getElementById("app").style.display="none"
+document.getElementById("login").style.display="block";
+document.getElementById("app").style.display="none";
 
 }
 
-})
+});
 
-window.addEventListener("beforeunload",function(e){
+/* MENU */
 
-if(!unsavedChanges) return
+window.toggleMenu=function(){
 
-e.preventDefault()
-e.returnValue=""
+let menu=document.getElementById("sideMenu");
+menu.classList.toggle("open");
 
-})
+}
 
 </script>
 
