@@ -205,6 +205,11 @@ margin-bottom:10px;
 <button onclick="newNovel()">New Novel</button>
 <button onclick="newChapter()">New Chapter</button>
 
+<button id="downloadBtn" onclick="downloadChapters()" style="display:none;">
+Download All Chapters (.txt)
+</button>
+
+
 </div>
 <div class="toolbar">
 
@@ -421,6 +426,21 @@ window.loadChapters = async function(selectedChapterId = null) {
       }
       loadChapter(); // this will handle showing number in header if needed
   }
+
+  if(select.options.length > 0){
+
+    document.getElementById("downloadBtn").style.display="block";
+
+    if(selectedChapterId){
+        select.value = selectedChapterId;
+    } else {
+        select.selectedIndex = 0;
+    }
+
+    loadChapter();
+}else{
+    document.getElementById("downloadBtn").style.display="none";
+}
 }
 
 
@@ -552,6 +572,94 @@ window.toggleMenu=function(){
 
 let menu=document.getElementById("sideMenu");
 menu.classList.toggle("open");
+
+}
+
+
+/*DOWNLOAD*/
+
+window.downloadChapters = async function(){
+
+  let novelId = document.getElementById("novelList").value
+  if(!novelId) return
+
+  const novelRef = doc(db,"users",auth.currentUser.uid,"novels",novelId)
+  const novelSnap = await getDoc(novelRef)
+
+  let novelName = novelSnap.data().name || "novel"
+
+  const ref = collection(db,"users",auth.currentUser.uid,"novels",novelId,"chapters")
+  const snap = await getDocs(ref)
+
+  let chapters = []
+
+  snap.forEach(docu=>{
+      chapters.push({
+          title: docu.data().title,
+          number: docu.data().number || 0,
+          content: docu.data().content || ""
+      })
+  })
+
+  chapters.sort((a,b)=>a.number-b.number)
+
+  let text=""
+
+  chapters.forEach(ch=>{
+      let cleanContent = htmlToNovelText(ch.content) // remove HTML
+      text += `Chapter ${ch.number}: ${ch.title}\n\n`
+      text += cleanContent + "\n\n"
+  })
+
+  const blob = new Blob([text], {type:"text/plain"})
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${novelName.replace(/\s+/g,"_")}.txt`
+
+  document.body.appendChild(a)
+  a.click()
+
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+
+}
+
+function htmlToNovelText(html){
+
+let text = html
+
+// Paragraphs
+text = text.replace(/<\/p>/gi,"\n\n")
+text = text.replace(/<p[^>]*>/gi,"")
+
+// Line breaks
+text = text.replace(/<br\s*\/?>/gi,"\n")
+
+// Lists
+text = text.replace(/<\/li>/gi,"\n")
+text = text.replace(/<li[^>]*>/gi,"- ")
+text = text.replace(/<\/?(ul|ol)[^>]*>/gi,"")
+
+// Remove formatting tags but keep text
+text = text.replace(/<\/?(b|strong|i|em|u)[^>]*>/gi,"")
+
+// Remove remaining HTML
+text = text.replace(/<[^>]*>/g,"")
+
+// Decode HTML entities
+text = text
+.replace(/&nbsp;/g," ")
+.replace(/&amp;/g,"&")
+.replace(/&lt;/g,"<")
+.replace(/&gt;/g,">")
+.replace(/&quot;/g,'"')
+
+// Clean excessive spacing
+text = text.replace(/\n{3,}/g,"\n\n")
+
+return text.trim()
 
 }
 
